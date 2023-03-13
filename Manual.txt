@@ -1,0 +1,21 @@
+.\" Manpage for ArchiveManager.
+.\" Contact vivek@nixcraft.net.in to correct errors or typos.
+.TH man 8 "19 May 2022" "1.0" "ArchiveMaker man page"
+.SH NAME
+ArchiveManager - high level program for making various operations based on archives.
+.SH SYNOPSIS
+BigScript [-h]
+.SH DESCRIPTION
+ArchiveManager provides a few basic operations using very comfortable zenity interface:
+ - creating new archive from selected files and directories
+ - looking inside the archives
+ - unpacking the archives in selected directories
+ - deleteing files from selected archives
+.SH OPTIONS
+-h  -  switches on the manual page for script
+.SH SEE ALSO
+No relations to other programs or scripts
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Michalski Piotr (michalski.44@wp.pl)
