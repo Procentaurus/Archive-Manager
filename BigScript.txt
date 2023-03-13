@@ -1,0 +1,209 @@
+#!/bin/bash
+
+# Author           : Piotr Michalski
+# Created On       : 10.05.2022
+# Last Modified By : Piotr Michalski
+# Last Modified On : 21.05.2022 
+# Version          : 1.0
+#
+# Description      :
+# The goal of this script is to simplify the work with different types of archives. Swift packing and unpacking archives is enabled, so as the opportunity 
+# to take a look for the inside of the archives and adding new elements to archives.
+
+
+startMenu(){
+   	result=$(zenity --list \
+    	--title="Choose the action you want to make" \
+    	--width=400 \
+    	--height=200 \
+   	--column="Number" --column="Description" \
+   	1 "Unpack the archive" \
+	2 "Create the archive" \
+	3 "Remove from the archive" \
+	4 "Take a look what is inside of the archive")
+    	
+    	if [ $result -eq 1 ]; then
+		unpackTheArchive
+	elif [ $result -eq 2 ]; then
+		createTheArchive
+	elif [ $result -eq 3 ]; then
+		deleteFromTheArchive
+	elif [ $result -eq 4 ]; then
+		searchTheArchive
+	elif [ $result -eq 5 ]; then
+		addElement
+	else
+		zenity --info --text="No command chosen. Try again" --no-wrap
+	fi 
+}
+
+unpackTar(){
+	tar -xvf ${1} -C ${2}
+}
+
+unpackZip(){
+	unzip ${1} -d ${2}
+}
+addElement(){
+	ARCHIVE=$( zenity --file-selection --title="Select the archive, which is to be added" )
+	FILE=$( zenity --file-selection --title="Select the archive, which is to be added" )
+	cut -d"/" -f 
+	TMPDIRECTORY=$( mktemp -d )
+	MYPATH=$( readlink -f $TMPDIRECTORY )
+	case $ARCHIVE in
+		*.tar.xz) unpackTar $FILE $MYPATH ;;
+		*.tar) unpackTar $FILE $MYPATH ;;
+		*.tar.gz) unpackTar $FILE $MYPATH ;;
+		*.zip) unpackZip $FILE $MYPATH ;;
+		*) zenity --info --text="Wrong type of file. Please choose .tar or .zip file the next time." --no-wrap ;;
+	esac
+	
+	cp ${FILE} ${MYPATH}
+	cd ${MYPATH}
+	FILENAME1=$( mktemp )
+	ls > $FILENAME1
+	COMBO=""
+	while read LINE; do
+		COMBO=$COMBO$LINE
+		COMBO=$COMBO" "
+	done < $FILENAME1
+	if [ "$COMBO" = "" ]; then
+		zenity --info --text="No files or directories chosen. Try again" --no-wrap
+		exit 0
+	fi
+	
+	case $ARCHIVE in
+	*.zip) NAME="$NAMETEMP"".zip"
+		zip -r $NAME $COMBO 
+		cp ${NAME} ${DIRECTORY};;
+	*.tar) NAME="$NAMETEMP"".tar"
+		tar -cvf $NAME $COMBO 
+		cp ${NAME} ${DIRECTORY};;
+	*.tar.gz) NAME="$NAMETEMP"".tar.gz"
+		tar -zcvf $NAME $COMBO 
+		cp ${NAME} ${DIRECTORY};;
+	*) zenity --info --text="No format of the archive chosen. Try again" --no-wrap
+		exit 0 ;;
+	esac
+}
+unpackTheArchive(){
+	FILE=$( zenity --file-selection --title="Select the archive to unpack" )
+	DIRECTORY=$( zenity --file-selection --directory --title="Select the directory for unpacked data" )
+	
+	case $FILE in
+		*.tar.xz) unpackTar $FILE $DIRECTORY ;;
+		*.tar) unpackTar $FILE $DIRECTORY ;;
+		*.tar.gz) unpackTar $FILE $DIRECTORY ;;
+		*.zip) unpackZip $FILE $DIRECTORY ;;
+		*) zenity --info --text="Wrong type of file. Please choose .tar or .zip file the next time." --no-wrap ;;
+	esac
+}
+
+createTheArchive(){
+	DIRECTORY=$( zenity --file-selection --directory --width="600" --height="600" --title="Select the directory, where the new archive is to be created" )
+	FILES=$( zenity --file-selection --multiple --width="600" --height="600" --separator=" " --title="Select the files to pack" )
+	DIRECTORIES=$( zenity --file-selection --directory --width="600" --height="600" --separator=" " --multiple --title="Select the directories to pack" )
+	FORMAT=$( zenity --list --title="Choose the format of you archive" --width="400" --height="200" \
+   	--column="Number" --column="Description" \
+   	1 ".zip" \
+	2 ".tar" \
+	3 ".tar.gz" )
+	NAMETEMP=$( zenity --entry --title="Write the name of your new archive" --text="Name of The archive:" )
+	if [ -z $NAMETEMP ]; then
+		NAMETEMP="NewArchive"
+	fi
+	
+	FILENAME1=$( mktemp )
+	FILENAME2=$( mktemp )
+	FILENAME3=$( mktemp )
+	TMPDIRECTORY=$( mktemp -d )
+	MYPATH=$( readlink -f $TMPDIRECTORY )
+	echo $FILES > $FILENAME1
+	echo $DIRECTORIES > $FILENAME2
+	
+	while read LINE; do
+		cp ${LINE} ${MYPATH}
+	done < $FILENAME1
+	while read LINE; do
+		cp -r ${LINE} ${MYPATH}
+	done < $FILENAME2
+	
+	cd $MYPATH
+	ls > $FILENAME3
+	cat $FILENAME3
+	COMBO=""
+	while read LINE; do
+		COMBO=$COMBO$LINE
+		COMBO=$COMBO" "
+	done < $FILENAME3
+	if [ "$COMBO" = "" ]; then
+		zenity --info --text="No files or directories chosen. Try again" --no-wrap
+		exit 0
+	fi
+	if [ ! -z $DIRECTORY ]; then
+		case $FORMAT in
+			1) NAME="$NAMETEMP"".zip"
+			   zip -r $NAME $COMBO 
+			   cp ${NAME} ${DIRECTORY};;
+			2) NAME="$NAMETEMP"".tar"
+			   tar -cvf $NAME $COMBO 
+			   cp ${NAME} ${DIRECTORY};;
+			3) NAME="$NAMETEMP"".tar.gz"
+			   tar -zcvf $NAME $COMBO 
+			   cp ${NAME} ${DIRECTORY};;
+			*) zenity --info --text="No format of the archive chosen. Try again" --no-wrap
+			   exit 0 ;;
+		esac
+	else
+		zenity --info --text="No target directory chosen. Try again" --no-wrap
+	fi
+}
+
+deleteFromTheArchive(){
+	RESULT=1
+	ARCHIVE=$( zenity --file-selection --width=400 --height=400 --title="Select the the archive, to which you want to add elements" )
+	if [ -z $ARCHIVE ]; then
+		zenity --info --text="No file chosen. Try again" --no-wrap
+		exit 0
+	fi
+	while [ $RESULT -eq 1 ]; do
+		ELEMENT=$( zenity --entry --width=600 --height=100 --title="Write down the file to remove" )
+		
+		case $ARCHIVE in
+			*.tar) tar -f $ARCHIVE  --delete "${ELEMENT}" ;;
+			*.zip) zip -d $ARCHIVE "${ELEMENT}" ;;
+			*) zenity --info --text="Wrong type of file. Please choose .tar or .zip file the next time." --no-wrap;;
+		esac
+
+		if zenity --question --text="Do you want to choose more files?"; then 
+			RESULT=1
+		else
+			RESULT=0
+		fi
+	done
+}
+
+searchTheArchive(){
+	ARCHIVE=$( zenity --file-selection --width=400 --height=400 --title="Select the the archive to watch through" )
+	FILENAME=$(mktemp)
+	case $ARCHIVE in
+		*.tar.xz) tar -tf $ARCHIVE > $FILENAME
+			zenity --text-info --filename="$FILENAME" --width=400 --height=300 ;;
+		*.tar.gz) tar -tf $ARCHIVE > $FILENAME 
+			zenity --text-info --filename="$FILENAME" --width=400 --height=300 ;;
+		*.tar) tar -tf $ARCHIVE > $FILENAME 
+			zenity --text-info --filename="$FILENAME" --width=400 --height=300 ;;
+		*.zip) zip -sf $ARCHIVE > $FILENAME
+			zenity --text-info --filename="$FILENAME" --width=400 --height=300 ;;
+		*) zenity --info --text="Wrong type of file. Please choose .tar or .zip file the next time." --no-wrap;;
+	esac
+}
+
+while getopts h OPT; do  #we will be using hvf options ':' after f means that it requires additonal arguments
+	case $OPT in  
+		h) man ./manBigScript.txt
+		   exit 0;;
+		*) echo "Nieznana opcja" ;;
+	esac
+done
+startMenu
